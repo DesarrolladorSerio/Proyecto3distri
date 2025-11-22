@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Pacientes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gestión Administrativa de Pacientes</h1>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('patients')">Pacientes</button>
+            <button class="tab-btn" onclick="showTab('payments')">Pagos</button>
+            <button class="tab-btn" onclick="showTab('invoices')">Facturas</button>
+        </div>
+
+        <!-- Sección Pacientes -->
+        <div id="patients" class="tab-content active">
+            <h2>Pacientes</h2>
+            <div class="card">
+                <h3>Nuevo Paciente</h3>
+                <form id="patientForm">
+                    <input type="text" id="p_rut" placeholder="RUT (12345678-9)" required>
+                    <input type="text" id="p_nombre" placeholder="Nombre Completo" required>
+                    <input type="email" id="p_email" placeholder="Email" required>
+                    <input type="text" id="p_telefono" placeholder="Teléfono">
+                    <input type="text" id="p_direccion" placeholder="Dirección">
+                    <button type="submit">Crear Paciente</button>
+                </form>
+            </div>
+            <div class="card">
+                <h3>Lista de Pacientes <button onclick="loadPatients()" class="sm-btn">Refrescar</button></h3>
+                <div class="table-responsive">
+                    <table id="patientsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>RUT</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Pagos -->
+        <div id="payments" class="tab-content">
+            <h2>Pagos</h2>
+            <div class="card">
+                <h3>Registrar Pago</h3>
+                <form id="paymentForm">
+                    <input type="number" id="pay_patient_id" placeholder="ID Paciente" required>
+                    <input type="number" id="pay_monto" placeholder="Monto" required>
+                    <select id="pay_metodo" required>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="transferencia">Transferencia</option>
+                    </select>
+                    <button type="submit">Registrar Pago</button>
+                </form>
+            </div>
+            <div class="card">
+                <h3>Consultar Pagos por Paciente</h3>
+                <div class="search-box">
+                    <input type="number" id="search_pay_id" placeholder="ID Paciente">
+                    <button onclick="loadPayments()">Buscar</button>
+                </div>
+                <table id="paymentsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sección Facturas -->
+        <div id="invoices" class="tab-content">
+            <h2>Facturas</h2>
+            <div class="card">
+                <h3>Generar Factura</h3>
+                <form id="invoiceForm">
+                    <input type="number" id="inv_patient_id" placeholder="ID Paciente" required>
+                    <input type="text" id="inv_desc" placeholder="Descripción" required>
+                    <input type="number" id="inv_monto" placeholder="Monto" required>
+                    <label>
+                        <input type="checkbox" id="inv_pagada"> Pagada
+                    </label>
+                    <button type="submit">Generar Factura</button>
+                </form>
+            </div>
+            <div class="card">
+                <h3>Consultar Facturas por Paciente</h3>
+                <div class="search-box">
+                    <input type="number" id="search_inv_id" placeholder="ID Paciente">
+                    <button onclick="loadInvoices()">Buscar</button>
+                </div>
+                <table id="invoicesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Descripción</th>
+                            <th>Monto</th>
+                            <th>Pagada</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
