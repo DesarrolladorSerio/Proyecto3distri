@@ -1,29 +1,110 @@
 services:
-  app:
-    build: .
+  # --- Balanceador de Carga ---
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "3002:3002"
-    environment:
-      - DB_HOST=postgres
-      - DB_USER=admin
-      - DB_PASSWORD=admin
-      - DB_DATABASE=app2
-      - DB_PORT=5432
-      - PORT=3002
+      - "3002:80"
     depends_on:
-      - postgres
-    command: sh -c "npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && npm start"
+      - app_primary
+      - app_replica
+    restart: always
+    healthcheck:
+      test: ["CMD", "service", "nginx", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-  postgres:
+  # --- Réplicas de Aplicación ---
+  app_primary:
+    build: .
+    environment: &app_env
+      DB_HOST: postgres_primary
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_DATABASE: app2
+      DB_PORT: 5432
+      PORT: 3002
+      APP_ID: primary
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    command: sh -c "npm install && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && npm start"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app_replica:
+    build: .
+    environment:
+      <<: *app_env
+      APP_ID: replica
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    command: sh -c "npm install && npm start"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- Base de Datos Primaria ---
+  postgres_primary:
     image: postgres:15
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: app2
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5432:5432"
+      - "5433:5432" # Expuesto para depuración
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./scripts/init_primary.sh:/docker-entrypoint-initdb.d/init_primary.sh
+    command: |
+      postgres 
+      -c wal_level=replica 
+      -c hot_standby=on 
+      -c max_wal_senders=10 
+      -c max_replication_slots=10 
+      -c hot_standby_feedback=on
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d app2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Base de Datos Réplica ---
+  postgres_replica:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: app2
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5434:5432" # Expuesto para depuración
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    entrypoint: ["bash", "-c", "chmod +x /docker-entrypoint-initdb.d/init_replica.sh && /docker-entrypoint-initdb.d/init_replica.sh && docker-entrypoint.sh postgres"]
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d app2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  postgres_data:
+  postgres_primary_data:
+  postgres_replica_data:

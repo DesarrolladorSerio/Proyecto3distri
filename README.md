@@ -1,16 +1,25 @@
 # App2 – Gestión Administrativa de Pacientes
 
 ## Descripción
-Aplicación backend RESTful diseñada para la gestión administrativa de pacientes, pagos y facturación. Está construida sobre **Node.js** y **Express**, utilizando **PostgreSQL** como base de datos relacional gestionada a través del ORM **Sequelize**.
+Aplicación backend RESTful diseñada para la gestión administrativa de pacientes, pagos y facturación. 
 
-El proyecto incluye un frontend básico (HTML/JS) para interactuar con la API y está totalmente dockerizado para un despliegue rápido.
+**Arquitectura Distribuida:**
+Esta aplicación ha sido actualizada para operar en un entorno distribuido con alta disponibilidad:
+- **Balanceo de Carga**: Nginx distribuye el tráfico entre múltiples instancias de la aplicación.
+- **Replicación de Aplicación**: Múltiples contenedores Node.js (`app_primary`, `app_replica`) para tolerancia a fallos.
+- **Replicación de Base de Datos**: PostgreSQL en configuración Maestro-Esclavo (Streaming Replication) para redundancia de datos.
+
+El proyecto incluye un frontend básico (HTML/JS) para interactuar con la API y está totalmente dockerizado.
 
 ## Tecnologías Principales
 - **Backend**: Node.js (v18), Express
-- **Base de Datos**: PostgreSQL 15
+- **Base de Datos**: PostgreSQL 15 (Cluster Primario-Réplica)
+- **Infraestructura**: 
+    - Docker & Docker Compose
+    - Nginx (Load Balancer)
+    - Bash Scripts (Orquestación de replicación)
 - **ORM**: Sequelize
 - **Validación**: Joi
-- **Infraestructura**: Docker, Docker Compose
 
 ## Requisitos Previos
 - **Docker Desktop** instalado y ejecutándose.
@@ -90,7 +99,12 @@ app2/
 │   ├── seeders/        # Datos iniciales de prueba
 │   └── services/       # Lógica de negocio y acceso a datos
 ├── public/             # Archivos estáticos del frontend
+├── scripts/            # Scripts de inicialización y replicación
+│   ├── init_primary.sh # Configuración de pg_hba.conf
+│   └── init_replica.sh # Script de base backup para réplica
 ├── app.js              # Punto de entrada de la aplicación
 ├── Dockerfile          # Definición de imagen Docker
-└── docker-compose.yml  # Orquestación de servicios
+├── docker-compose.yml  # Orquestación de servicios (Cluster)
+├── nginx.conf          # Configuración del Balanceador de Carga
+└── .sequelizerc        # Configuración de rutas para Sequelize CLI
 ```
