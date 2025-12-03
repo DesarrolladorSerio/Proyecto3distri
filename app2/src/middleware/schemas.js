@@ -12,7 +12,8 @@ const paymentSchema = Joi.object({
   patient_id: Joi.number().integer().required(),
   monto: Joi.number().positive().required(),
   metodo_pago: Joi.string().required(),
-  estado: Joi.string().default('completed')
+  estado: Joi.string().default('completed'),
+  descripcion: Joi.string().allow(null, '')
 });
 
 const invoiceSchema = Joi.object({

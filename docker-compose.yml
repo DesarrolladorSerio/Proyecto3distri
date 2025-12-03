@@ -1,0 +1,361 @@
+version: "3.9"
+
+services:
+  # ==========================================
+  # APP 1 - Gestión Médica (Flask + MariaDB)
+  # ==========================================
+  
+  mariadb-master:
+    image: mariadb:11
+    container_name: mariadb-master
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: gestion_medica
+      MARIADB_USER: appuser
+      MARIADB_PASSWORD: apppass
+    ports:
+      - "3309:3306"
+    command:
+      - "--server-id=1"
+      - "--log-bin=mysql-bin"
+      - "--binlog-do-db=gestion_medica"
+    volumes:
+      - ./app1/db/data-master:/var/lib/mysql
+      - ./app1/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -u root -prootpass -e 'select 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - medical_system
+
+  mariadb-replica:
+    image: mariadb:11
+    container_name: mariadb-replica
+    restart: unless-stopped
+    depends_on:
+      - mariadb-master
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+    command:
+      - "--server-id=2"
+      - "--relay-log=relay-bin"
+      - "--log-bin=mysql-bin"
+    volumes:
+      - ./app1/db/data-replica:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -u root -prootpass -e 'select 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - medical_system
+
+  app1:
+    build: ./app1/app1
+    container_name: app1
+    restart: unless-stopped
+    depends_on:
+      mariadb-master:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb-master
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: gestion_medica
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/').read()\""]
+      interval: 5s
+      timeout: 2s
+      retries: 4
+    networks:
+      - medical_system
+
+  app1-replica:
+    build: ./app1/app1
+    container_name: app1-replica
+    restart: unless-stopped
+    depends_on:
+      mariadb-master:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb-master
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: gestion_medica
+    ports:
+      - "5002:5001"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/').read()\""]
+      interval: 5s
+      timeout: 2s
+      retries: 4
+    networks:
+      - medical_system
+
+  # ==========================================
+  # APP 2 - Gestión Administrativa (Node.js + PostgreSQL)
+  # ==========================================
+
+  postgres_primary:
+    image: postgres:15
+    container_name: app2-postgres_primary
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: app2
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./app2/scripts/init_primary.sh:/docker-entrypoint-initdb.d/init_primary.sh
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - hot_standby=on
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby_feedback=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d app2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medical_system
+
+  postgres_replica:
+    image: postgres:15
+    container_name: app2-postgres_replica
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: app2
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./app2/scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
+    command: bash -c "chmod +x /docker-entrypoint-initdb.d/init_replica.sh && /docker-entrypoint-initdb.d/init_replica.sh"
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d app2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medical_system
+
+  app_primary:
+    build: ./app2
+    container_name: app2-app_primary
+    restart: always
+    environment:
+      DB_HOST: postgres_primary
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_DATABASE: app2
+      DB_PORT: 5432
+      PORT: 3002
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - medical_system
+
+  app_replica:
+    build: ./app2
+    container_name: app2-app_replica
+    restart: always
+    environment:
+      DB_HOST: postgres_primary
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_DATABASE: app2
+      DB_PORT: 5432
+      PORT: 3002
+    depends_on:
+      postgres_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - medical_system
+
+  nginx:
+    image: nginx:latest
+    container_name: app2-nginx
+    restart: always
+    ports:
+      - "3002:80"
+    volumes:
+      - ./app2/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app_primary
+      - app_replica
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - medical_system
+
+  # ==========================================
+  # APP 3 - Portal del Paciente (Flask + MySQL)
+  # ==========================================
+
+  mysql_primary:
+    image: mysql:8.0
+    container_name: app3-mysql_primary
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: app3
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_primary_data:/var/lib/mysql
+      - ./app3/scripts/init_primary.sh:/docker-entrypoint-initdb.d/init_primary.sh
+    command:
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --binlog-do-db=app3
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "admin", "-padmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medical_system
+
+  mysql_replica:
+    image: mysql:8.0
+    container_name: app3-mysql_replica
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: app3
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_replica_data:/var/lib/mysql
+      - ./app3/scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
+    command:
+      - --server-id=2
+      - --relay-log=relay-bin
+      - --log-bin=mysql-bin
+      - --binlog-do-db=app3
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    depends_on:
+      mysql_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "admin", "-padmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medical_system
+
+  app3:
+    build: ./app3
+    container_name: app3-app
+    restart: always
+    ports:
+      - "3003:3003"
+    environment:
+      DB_HOST: mysql_primary
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_DATABASE: app3
+      DB_PORT: 3306
+      PORT: 3003
+      MIDDLEWARE_URL: http://middleware:8000
+    depends_on:
+      mysql_primary:
+        condition: service_healthy
+      middleware:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - medical_system
+
+  # ==========================================
+  # MIDDLEWARE - Capa de Integración (FastAPI)
+  # ==========================================
+
+  middleware:
+    build: ./middleware
+    container_name: middleware
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      APP1_URL: http://app1:5001
+      APP1_REPLICA_URL: http://app1-replica:5001
+      APP2_URL: http://nginx:80
+      REQUEST_TIMEOUT: 5
+      MAX_RETRIES: 3
+    depends_on:
+      app1:
+        condition: service_healthy
+      nginx:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - medical_system
+
+# ==========================================
+# NETWORKS
+# ==========================================
+networks:
+  medical_system:
+    driver: bridge
+
+# ==========================================
+# VOLUMES
+# ==========================================
+volumes:
+  postgres_primary_data:
+  postgres_replica_data:
+  mysql_primary_data:
+  mysql_replica_data:

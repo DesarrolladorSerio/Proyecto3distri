@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Información de Pagos - Portal del Paciente{% endblock %}
+
+{% block content %}
+<div class="payments">
+    <h2>Información de Pagos</h2>
+    <p class="patient-info">Paciente: <strong>{{ patient_rut }}</strong></p>
+
+    {% if payments %}
+    <!-- Resumen de deuda -->
+    {% if payments.total_debt > 0 %}
+    <div class="alert alert-warning">
+        <h3>Deuda Pendiente: ${{ "{:,.0f}".format(payments.total_debt) }}</h3>
+    </div>
+    {% else %}
+    <div class="alert alert-success">
+        <h3>Sin deudas pendientes ✓</h3>
+    </div>
+    {% endif %}
+
+    <!-- Facturas pendientes -->
+    {% if payments.pending_invoices %}
+    <section class="section">
+        <h3>Facturas Pendientes</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Vencimiento</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in payments.pending_invoices %}
+                <tr>
+                    <td>{{ invoice.date | datetimeformat }}</td>
+                    <td>{{ invoice.description }}</td>
+                    <td>${{ "{:,.0f}".format(invoice.amount) }}</td>
+                    <td>{{ invoice.due_date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+
+    <!-- Historial de pagos -->
+    {% if payments.payments %}
+    <section class="section">
+        <h3>Historial de Pagos</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments.payments %}
+                <tr>
+                    <td>{{ payment.date | datetimeformat }}</td>
+                    <td>{{ payment.description }}</td>
+                    <td>${{ "{:,.0f}".format(payment.amount) }}</td>
+                    <td>{{ payment.method }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+    {% else %}
+    <div class="alert alert-info">
+        <p>No se encontró información de pagos.</p>
+    </div>
+    {% endif %}
+
+    <div class="actions">
+        <a href="{{ url_for('patient.dashboard') }}" class="btn btn-secondary">Volver al Dashboard</a>
+    </div>
+</div>
+{% endblock %}

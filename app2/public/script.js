@@ -58,7 +58,7 @@ document.getElementById('patientForm').addEventListener('submit', async (e) => {
 });
 
 async function deletePatient(id) {
-    if(!confirm('¿Estás seguro?')) return;
+    if (!confirm('¿Estás seguro?')) return;
     try {
         await fetch(`${API_URL}/patients/${id}`, { method: 'DELETE' });
         loadPatients();
@@ -79,6 +79,7 @@ async function loadPayments() {
                 <tr>
                     <td>${p.id}</td>
                     <td>$${p.monto}</td>
+                    <td>${p.descripcion || ''}</td>
                     <td>${p.metodo_pago}</td>
                     <td>${new Date(p.fecha).toLocaleDateString()}</td>
                 </tr>
@@ -92,6 +93,7 @@ document.getElementById('paymentForm').addEventListener('submit', async (e) => {
     const data = {
         patient_id: document.getElementById('pay_patient_id').value,
         monto: document.getElementById('pay_monto').value,
+        descripcion: document.getElementById('pay_desc').value,
         metodo_pago: document.getElementById('pay_metodo').value,
         estado: 'completed'
     };

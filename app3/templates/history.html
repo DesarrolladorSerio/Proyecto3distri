@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Historial Médico - Portal del Paciente{% endblock %}
+
+{% block content %}
+<div class="history">
+    <h2>Historial Médico</h2>
+    <p class="patient-info">Paciente: <strong>{{ patient_rut }}</strong></p>
+
+    {% if history and history.consultations %}
+    <div class="consultations">
+        {% for consultation in history.consultations %}
+        <div class="card consultation-card">
+            <div class="consultation-header">
+                <h3>{{ consultation.specialty }}</h3>
+                <span class="date">{{ consultation.date }}</span>
+            </div>
+            <div class="consultation-body">
+                <p><strong>Médico:</strong> {{ consultation.doctor }}</p>
+                <p><strong>Diagnóstico:</strong> {{ consultation.diagnosis }}</p>
+                <p><strong>Tratamiento:</strong> {{ consultation.treatment }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <p>No se encontraron consultas médicas registradas.</p>
+    </div>
+    {% endif %}
+
+    <div class="actions">
+        <a href="{{ url_for('patient.dashboard') }}" class="btn btn-secondary">Volver al Dashboard</a>
+    </div>
+</div>
+{% endblock %}

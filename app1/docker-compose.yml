@@ -1,0 +1,126 @@
+version: "3.9"
+
+services:
+  mariadb-master:
+    image: mariadb:11
+    container_name: mariadb-master
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: gestion_medica
+      MARIADB_USER: appuser
+      MARIADB_PASSWORD: apppass
+    ports:
+      - "3307:3306"
+    command:
+      - "--server-id=1"
+      - "--log-bin=mysql-bin"
+      - "--binlog-do-db=gestion_medica"
+      # opcional pero recomendado:
+      # - "--binlog-format=ROW"
+    volumes:
+      - ./db/data-master:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -u root -prootpass -e 'select 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - medical_net
+
+  mariadb-replica:
+    image: mariadb:11
+    container_name: mariadb-replica
+    restart: unless-stopped
+    depends_on:
+      - mariadb-master
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+    command:
+      - "--server-id=2"
+      - "--relay-log=relay-bin"
+      - "--log-bin=mysql-bin"
+      # - "--read-only=1"  # opcional si quieres forzar solo lectura
+      # - "--binlog-format=ROW"
+    volumes:
+      - ./db/data-replica:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -u root -prootpass -e 'select 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - medical_net
+
+  app1:
+    build: ./app1
+    container_name: app1
+    restart: unless-stopped
+    depends_on:
+      mariadb-master:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb-master
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: gestion_medica
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/').read()\""]
+      interval: 5s
+      timeout: 2s
+      retries: 4
+    networks:
+      - medical_net
+
+  app1_replica:
+    build: ./app1
+    container_name: app1-replica
+    restart: unless-stopped
+    depends_on:
+      mariadb-master:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb-master
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: gestion_medica
+    ports:
+      - "5002:5001"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/').read()\""]
+      interval: 5s
+      timeout: 2s
+      retries: 4
+    networks:
+      - medical_net
+
+  # -----------------------------
+  # Orchestrator
+  # -----------------------------
+  orchestrator:
+    image: openarkcode/orchestrator:latest
+    container_name: orchestrator
+    restart: unless-stopped
+    depends_on:
+      - mariadb-master
+      - mariadb-replica
+    environment:
+      - ORC_HTTP_PORT=3000
+      - ORC_MYSQL_PORT=3306
+      - ORC_MYSQL_USER=repl
+      - ORC_MYSQL_PASSWORD=replpass
+    ports:
+      - "3000:3000"                # UI web en http://localhost:3000
+    volumes:
+      - ./orchestrator/orchestrator.conf.json:/etc/orchestrator.conf.json
+    networks:
+      - medical_net
+
+networks:
+  medical_net:
+    driver: bridge

@@ -1,0 +1,11 @@
+{
+  "Debug": true,
+  "ListenAddress": ":3000",
+
+  "MySQLTopologyUser": "root",
+  "MySQLTopologyPassword": "rootpass",
+  "MySQLTopologyUseMutualTLS": false,
+
+  "BackendDB": "sqlite",
+  "SQLite3DataFile": "/usr/local/orchestrator/orchestrator.sqlite3"
+}

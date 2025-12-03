@@ -31,6 +31,10 @@ module.exports = (sequelize, DataTypes) => {
     estado: {
       type: DataTypes.STRING,
       defaultValue: 'completed'
+    },
+    descripcion: {
+      type: DataTypes.STRING,
+      allowNull: true
     }
   }, {
     sequelize,

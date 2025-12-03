@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Citas - Portal del Paciente{% endblock %}
+
+{% block content %}
+<div class="appointments">
+    <h2>Gestión de Citas Médicas</h2>
+    <p class="patient-info">Paciente: <strong>{{ patient_rut }}</strong></p>
+
+    <!-- Formulario para crear nueva cita -->
+    <section class="section">
+        <h3>Agendar Nueva Cita</h3>
+        <form action="{{ url_for('appointment.create_appointment') }}" method="POST" class="appointment-form">
+            <input type="hidden" name="patient_rut" value="{{ patient_rut }}">
+
+            <div class="form-group">
+                <label for="patient_name">Nombre Completo:</label>
+                <input type="text" id="patient_name" name="patient_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="doctor_name">Médico:</label>
+                <select id="doctor_name" name="doctor_name" required>
+                    <option value="">Seleccione un médico</option>
+                    {% for doctor in doctors %}
+                    <option value="{{ doctor.name }}" data-specialty="{{ doctor.specialty }}">
+                        {{ doctor.name }} - {{ doctor.specialty }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="specialty">Especialidad:</label>
+                <input type="text" id="specialty" name="specialty" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="appointment_date">Fecha y Hora:</label>
+                <input type="datetime-local" id="appointment_date" name="appointment_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notas (opcional):</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Agendar Cita</button>
+        </form>
+    </section>
+
+    <!-- Lista de citas existentes -->
+    <section class="section">
+        <h3>Mis Citas</h3>
+        {% if appointments %}
+        <div class="appointments-list">
+            {% for appointment in appointments %}
+            <div class="card appointment-card {% if appointment.status == 'cancelled' %}cancelled{% endif %}">
+                <div class="appointment-header">
+                    <h4>{{ appointment.doctor_name }}</h4>
+                    <span class="status status-{{ appointment.status }}">{{ appointment.status }}</span>
+                </div>
+                <div class="appointment-body">
+                    <p><strong>Especialidad:</strong> {{ appointment.specialty }}</p>
+                    <p><strong>Fecha:</strong> {{ appointment.appointment_date.strftime('%d/%m/%Y %H:%M') }}</p>
+                    {% if appointment.notes %}
+                    <p><strong>Notas:</strong> {{ appointment.notes }}</p>
+                    {% endif %}
+                </div>
+                {% if appointment.status != 'cancelled' %}
+                <div class="appointment-actions">
+                    <form action="{{ url_for('appointment.cancel_appointment', appointment_id=appointment.id) }}"
+                        method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger btn-sm"
+                            onclick="return confirm('¿Está seguro de cancelar esta cita?')">
+                            Cancelar Cita
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <p>No tiene citas agendadas.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Médicos disponibles -->
+    <section class="section" id="doctors">
+        <h3>Médicos Disponibles</h3>
+        <div class="doctors-grid">
+            {% for doctor in doctors %}
+            <div class="card doctor-card">
+                <h4>{{ doctor.name }}</h4>
+                <p class="specialty">{{ doctor.specialty }}</p>
+                <p><strong>Horarios disponibles:</strong></p>
+                <ul class="slots">
+                    {% for slot in doctor.available_slots %}
+                    <li>{{ slot }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="actions">
+        <a href="{{ url_for('patient.dashboard') }}" class="btn btn-secondary">Volver al Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-rellenar especialidad al seleccionar médico
+    document.getElementById('doctor_name').addEventListener('change', function () {
+        const selectedOption = this.options[this.selectedIndex];
+        const specialty = selectedOption.getAttribute('data-specialty');
+        document.getElementById('specialty').value = specialty || '';
+    });
+</script>
+{% endblock %}

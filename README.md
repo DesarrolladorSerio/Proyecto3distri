@@ -1,110 +1,294 @@
-# App2 – Gestión Administrativa de Pacientes
+# Sistema de Gestión Médica Distribuido
 
-## Descripción
-Aplicación backend RESTful diseñada para la gestión administrativa de pacientes, pagos y facturación. 
+Proyecto académico de sistemas distribuidos con tolerancia a fallos, replicación de datos y middleware.
 
-**Arquitectura Distribuida:**
-Esta aplicación ha sido actualizada para operar en un entorno distribuido con alta disponibilidad:
-- **Balanceo de Carga**: Nginx distribuye el tráfico entre múltiples instancias de la aplicación.
-- **Replicación de Aplicación**: Múltiples contenedores Node.js (`app_primary`, `app_replica`) para tolerancia a fallos.
-- **Replicación de Base de Datos**: PostgreSQL en configuración Maestro-Esclavo (Streaming Replication) para redundancia de datos.
+## Arquitectura
 
-El proyecto incluye un frontend básico (HTML/JS) para interactuar con la API y está totalmente dockerizado.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SISTEMA DISTRIBUIDO                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────┐      ┌──────────────┐      ┌──────────┐      │
+│  │  App 1   │      │  Middleware  │      │  App 3   │      │
+│  │  Flask   │◄─────┤   FastAPI    │◄─────┤  Flask   │      │
+│  │ (Médica) │      │              │      │(Paciente)│      │
+│  └────┬─────┘      └──────┬───────┘      └────┬─────┘      │
+│       │                   │                   │             │
+│  ┌────▼──────┐      ┌─────▼──────┐      ┌────▼──────┐      │
+│  │  MariaDB  │      │   App 2    │      │   MySQL   │      │
+│  │Primary/Rep│      │  Node.js   │      │Primary/Rep│      │
+│  └───────────┘      │(Admin+Nginx)│      └───────────┘      │
+│                     └──────┬──────┘                         │
+│                     ┌──────▼──────┐                         │
+│                     │  PostgreSQL │                         │
+│                     │ Primary/Rep │                         │
+│                     └─────────────┘                         │
+└─────────────────────────────────────────────────────────────┘
+```
 
-## Tecnologías Principales
-- **Backend**: Node.js (v18), Express
-- **Base de Datos**: PostgreSQL 15 (Cluster Primario-Réplica)
-- **Infraestructura**: 
-    - Docker & Docker Compose
-    - Nginx (Load Balancer)
-    - Bash Scripts (Orquestación de replicación)
-- **ORM**: Sequelize
-- **Validación**: Joi
+## Componentes
 
-## Requisitos Previos
-- **Docker Desktop** instalado y ejecutándose.
-- (Opcional) Node.js y npm instalados localmente si se desea ejecutar sin contenedores.
+### App 1 - Gestión de Consultas Médicas
+- **Tecnología**: Python (Flask)
+- **Base de Datos**: MariaDB (Maestro-Esclavo)
+- **Puerto**: 5001 (Primary), 5002 (Replica)
+- **Usuarios**: Médicos y enfermeros
+- **Funcionalidades**: Consultas, diagnósticos, tratamientos, disponibilidad médica
+
+### App 2 - Gestión Administrativa de Pacientes
+- **Tecnología**: Node.js (Express)
+- **Base de Datos**: PostgreSQL (Primary-Replica)
+- **Puerto**: 3002 (Nginx load balancer)
+- **Usuarios**: Administrativos, contadores
+- **Funcionalidades**: Datos de pacientes, pagos, seguros, facturación
+
+### App 3 - Portal del Paciente
+- **Tecnología**: Python (Flask)
+- **Base de Datos**: MySQL (Primary-Replica)
+- **Puerto**: 3003
+- **Usuarios**: Pacientes
+- **Funcionalidades**: Historial médico, pagos, gestión de citas
+
+### Middleware
+- **Tecnología**: Python (FastAPI)
+- **Puerto**: 8000
+- **Función**: Integración entre App3 y App1/App2
+- **Features**: Circuit Breaker, Retry, Failover, Transformación de datos
 
 ## Instalación y Ejecución
 
-### Opción 1: Usando Docker (Recomendado)
-Esta es la forma más sencilla, ya que configura automáticamente la base de datos, ejecuta las migraciones y carga datos de prueba.
+### Prerequisitos
+- Docker Desktop instalado y ejecutándose
+- Git
 
-1. Abre una terminal en la carpeta del proyecto.
-2. Ejecuta el siguiente comando:
+### Levantar todo el sistema
+```bash
+# Desde la raíz del proyecto
+docker-compose up --build -d
+
+# Ver logs
+docker-compose logs -f
+
+# Ver estado
+docker-compose ps
+```
+
+### Detener el sistema
+```bash
+docker-compose down
+
+# Eliminar también los volúmenes (datos)
+docker-compose down -v
+```
+
+## Puertos
+
+| Servicio | Puerto | URL |
+|----------|--------|-----|
+| **App1 Primary** | 5001 | http://localhost:5001 |
+| **App1 Replica** | 5002 | http://localhost:5002 |
+| **App2 (Nginx)** | 3002 | http://localhost:3002 |
+| **App3** | 3003 | http://localhost:3003 |
+| **Middleware** | 8000 | http://localhost:8000 |
+| **Middleware Docs** | 8000 | http://localhost:8000/docs |
+| **MariaDB Master** | 3306 | localhost:3306 |
+| **PostgreSQL Primary** | 5433 | localhost:5433 |
+| **PostgreSQL Replica** | 5434 | localhost:5434 |
+| **MySQL Primary** | 3307 | localhost:3307 |
+| **MySQL Replica** | 3308 | localhost:3308 |
+
+## Primeros Pasos
+
+1. **Levantar el sistema**:
    ```bash
-   docker-compose up --build
+   docker-compose up -d
    ```
-3. Espera a que termine el proceso de construcción e inicio.
-4. Accede a la aplicación en: **http://localhost:3002**
-
-### Opción 2: Ejecución Manual (Local)
-Si prefieres correrlo nativamente en tu máquina:
-
-1. Instala las dependencias:
+   
+2. **Esperar a que todo esté healthy** (~30 segundos):
    ```bash
-   npm install
+   docker-compose ps
    ```
-2. Asegúrate de tener una instancia de PostgreSQL corriendo y crea una base de datos llamada `app2`.
-3. Configura las variables de entorno en un archivo `.env` (puedes copiar `.env.example`).
-4. Ejecuta las migraciones y seeds:
+
+3. **Acceder al Portal del Paciente**:
+   - URL: http://localhost:3003
+   - RUT de prueba: `11111111-1`
+
+4. **Ver documentación del Middleware**:
+   - URL: http://localhost:8000/docs
+
+5. **Verificar Circuit Breakers**:
    ```bash
-   npx sequelize-cli db:migrate
-   npx sequelize-cli db:seed:all
-   ```
-5. Inicia el servidor:
-   ```bash
-   npm start
+   curl http://localhost:8000/health
    ```
 
-## Uso de la Aplicación
+## Pruebas de Tolerancia a Fallos
 
-### Frontend
-Al acceder a `http://localhost:3002`, verás una interfaz con tres pestañas:
-- **Pacientes**: Permite listar, crear y eliminar pacientes.
-- **Pagos**: Permite registrar pagos y ver el historial de pagos por paciente.
-- **Facturas**: Permite generar facturas y consultarlas por paciente.
+### Probar Failover de App1
+```bash
+# Detener App1 Primary
+docker stop app1
 
-### API Endpoints
-La aplicación expone una API REST JSON. Puedes probarla usando **Thunder Client** (importando el archivo `thunder-collection_App2.json` incluido) o cualquier cliente HTTP.
+# Verificar que App3 sigue funcionando (usa réplica)
+curl http://localhost:3003/history?rut=11111111-1
 
-#### Pacientes
-- `GET /patients`: Listar todos los pacientes.
-- `GET /patients/:id`: Obtener detalle de un paciente.
-- `POST /patients`: Crear paciente.
-  - Body: `{ "rut": "...", "nombre": "...", "email": "...", ... }`
-- `PUT /patients/:id`: Actualizar paciente.
-- `DELETE /patients/:id`: Eliminar paciente.
+# Reiniciar
+docker start app1
+```
 
-#### Pagos
-- `GET /payments/:patientId`: Listar pagos de un paciente.
-- `POST /payments`: Registrar pago.
-  - Body: `{ "patient_id": 1, "monto": 1000, "metodo_pago": "efectivo" }`
+### Probar Circuit Breaker
+```bash
+# Detener ambas instancias de App1
+docker stop app1 app1-replica
 
-#### Facturas
-- `GET /invoices/:patientId`: Listar facturas de un paciente.
-- `POST /invoices`: Crear factura.
-  - Body: `{ "patient_id": 1, "monto": 5000, "descripcion": "Consulta" }`
+# Hacer varias peticiones (el circuit breaker se abrirá)
+curl http://localhost:8000/api/medical-history/11111111-1
+
+# Ver estado
+curl http://localhost:8000/health
+
+# Reiniciar
+docker start app1 app1-replica
+```
+
+### Probar Replicación de Bases de Datos
+
+**PostgreSQL (App2)**:
+```bash
+# Crear un paciente
+curl -X POST http://localhost:3002/patients \
+  -H "Content-Type: application/json" \
+  -d '{"rut":"99999999-9","nombre":"Test","email":"test@test.com","telefono":"123","direccion":"Test St"}'
+
+# Verificar en Primary
+docker exec app2-postgres_primary-1 psql -U admin -d app2 -c "SELECT * FROM patients WHERE rut='99999999-9';"
+
+# Verificar en Replica
+docker exec app2-postgres_replica-1 psql -U admin -d app2 -c "SELECT * FROM patients WHERE rut='99999999-9';"
+```
+
+**MySQL (App3)**:
+```bash
+# Crear una cita
+curl -X POST http://localhost:3003/api/appointments \
+  -H "Content-Type: application/json" \
+  -d '{"patient_rut":"11111111-1","patient_name":"Test","doctor_name":"Dr. Test","specialty":"General","appointment_date":"2024-12-15T10:00:00"}'
+
+# Verificar en Primary
+docker exec app3-mysql_primary-1 mysql -u admin -padmin -D app3 -e "SELECT * FROM appointments;"
+
+# Verificar en Replica
+docker exec app3-mysql_replica-1 mysql -u admin -padmin -D app3 -e "SELECT * FROM appointments;"
+```
+
+## Monitoreo
+
+### Ver logs de todos los servicios
+```bash
+docker-compose logs -f
+```
+
+### Ver logs de un servicio específico
+```bash
+docker-compose logs -f middleware
+docker-compose logs -f app3
+docker-compose logs -f nginx
+```
+
+### Ver estado de salud
+```bash
+# Todos los servicios
+docker-compose ps
+
+# Solo servicios saludables
+docker-compose ps | grep healthy
+```
 
 ## Estructura del Proyecto
+
 ```
-app2/
-├── src/
-│   ├── config/         # Configuración de base de datos
-│   ├── controllers/    # Controladores (lógica de respuesta HTTP)
-│   ├── middleware/     # Validaciones (Joi) y manejo de errores
-│   ├── migrations/     # Scripts de creación de tablas
-│   ├── models/         # Definición de modelos Sequelize
-│   ├── routes/         # Definición de endpoints
-│   ├── seeders/        # Datos iniciales de prueba
-│   └── services/       # Lógica de negocio y acceso a datos
-├── public/             # Archivos estáticos del frontend
-├── scripts/            # Scripts de inicialización y replicación
-│   ├── init_primary.sh # Configuración de pg_hba.conf
-│   └── init_replica.sh # Script de base backup para réplica
-├── app.js              # Punto de entrada de la aplicación
-├── Dockerfile          # Definición de imagen Docker
-├── docker-compose.yml  # Orquestación de servicios (Cluster)
-├── nginx.conf          # Configuración del Balanceador de Carga
-└── .sequelizerc        # Configuración de rutas para Sequelize CLI
+Proyecto3distri/
+├── app1/                   # App 1 - Gestión Médica
+│   ├── app1/              # Código Flask
+│   ├── db/                # Scripts de base de datos
+│   └── docker-compose.yml # (individual, no usado)
+├── app2/                   # App 2 - Gestión Administrativa
+│   ├── src/               # Código Node.js
+│   ├── scripts/           # Scripts de replicación
+│   ├── nginx.conf         # Configuración Nginx
+│   └── docker-compose.yml # (individual, no usado)
+├── app3/                   # App 3 - Portal del Paciente
+│   ├── src/               # Código Flask
+│   ├── templates/         # Vistas HTML
+│   ├── static/            # CSS/JS
+│   ├── scripts/           # Scripts MySQL
+│   └── docker-compose.yml # (individual, no usado)
+├── middleware/             # Middleware - Integración
+│   ├── clients/           # Clientes HTTP
+│   ├── routes/            # Endpoints API
+│   ├── utils/             # Circuit Breaker, Retry
+│   └── docker-compose.yml # (individual, no usado)
+└── docker-compose.yml      # ⭐ MAESTRO (usar este)
 ```
+
+## SLA/SLO
+
+### Acuerdos de Nivel de Servicio (SLA)
+- **Disponibilidad mínima mensual**: 96%
+- **Tiempo máximo de respuesta App3**: 3 segundos
+- **Recuperación ante caída**: < 30 segundos
+- **Recuperación de BD**: ≤ 20-40 segundos
+
+### Objetivos de Nivel de Servicio (SLO)
+- **Detección de caída**: ≤ 5-10 segundos
+- **Activación de réplica BD**: ≤ 10-20 segundos
+- **Failover de aplicación**: ≤ 15-30 segundos
+- **Registro de fallos**: < 5 segundos
+- **Reintentos Middleware**: Cada 5-10 segundos
+
+## Troubleshooting
+
+### Los contenedores no inician
+```bash
+# Ver errores
+docker-compose logs
+
+# Recrear desde cero
+docker-compose down -v
+docker-compose up --build
+```
+
+### Error de conexión entre servicios
+```bash
+# Verificar la red
+docker network ls
+docker network inspect proyecto3distri_medical_system
+
+# Verificar que todos estén en la misma red
+docker-compose ps
+```
+
+### Base de datos no replica
+```bash
+# Ver logs de las réplicas
+docker logs app2-postgres_replica-1
+docker logs app3-mysql_replica-1
+
+# Verificar estado de replicación
+docker exec app2-postgres_replica-1 psql -U admin -d app2 -c "SELECT * FROM pg_stat_replication;"
+```
+
+## Documentación Adicional
+
+- [App 1 README](app1/README.md)
+- [App 2 README](app2/README.md)
+- [App 3 README](app3/README.md)
+- [Middleware README](middleware/README.md)
+
+## Autores
+
+Proyecto académico - Sistemas Distribuidos
+
+## Licencia
+
+Uso académico únicamente
