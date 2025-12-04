@@ -12,6 +12,7 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.md text eol=lf
+*.sql text eol=lf
 
 # Windows-specific files can use CRLF
 *.bat text eol=crlf
