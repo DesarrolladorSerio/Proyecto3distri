@@ -5,7 +5,7 @@
 {% block content %}
 <div class="payments">
     <h2>Información de Pagos</h2>
-    <p class="patient-info">Paciente: <strong>{{ patient_rut }}</strong></p>
+    <p class="patient-info">RUT PACIENTE: <strong>{{ patient_rut }}</strong></p>
 
     {% if payments %}
     <!-- Resumen de deuda -->
@@ -29,7 +29,6 @@
                     <th>Fecha</th>
                     <th>Descripción</th>
                     <th>Monto</th>
-                    <th>Vencimiento</th>
                 </tr>
             </thead>
             <tbody>
@@ -38,7 +37,31 @@
                     <td>{{ invoice.date | datetimeformat }}</td>
                     <td>{{ invoice.description }}</td>
                     <td>${{ "{:,.0f}".format(invoice.amount) }}</td>
-                    <td>{{ invoice.due_date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% endif %}
+
+    <!-- Facturas pagadas -->
+    {% if payments.paid_invoices %}
+    <section class="section">
+        <h3>Facturas Pagadas</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in payments.paid_invoices %}
+                <tr>
+                    <td>{{ invoice.date | datetimeformat }}</td>
+                    <td>{{ invoice.description }}</td>
+                    <td>${{ "{:,.0f}".format(invoice.amount) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

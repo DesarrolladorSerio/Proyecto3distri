@@ -16,11 +16,36 @@ def login_required(f):
 @patient_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        rut = request.form.get('rut')
-        if rut:
-            session['patient_rut'] = rut
-            return redirect(url_for('patient.dashboard'))
-        flash('Por favor ingrese un RUT válido', 'danger')
+        rut = request.form.get('rut', '').strip()
+        if not rut:
+            flash('Por favor ingrese un RUT válido', 'danger')
+            return render_template('login.html')
+        
+        # Verificar que el RUT exista en la base de datos a través del middleware
+        try:
+            middleware = MiddlewareClient(Config.MIDDLEWARE_URL)
+            # Intentar obtener el paciente desde App2 vía middleware
+            url = f"{Config.MIDDLEWARE_URL}/api/patient/{rut}"
+            import requests
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                # El paciente existe, permitir login
+                patient = response.json()
+                session['patient_rut'] = rut
+                session['patient_name'] = patient.get('nombre', 'Paciente')
+                flash(f'Bienvenido {patient.get("nombre", "")}!', 'success')
+                return redirect(url_for('patient.dashboard'))
+            elif response.status_code == 404:
+                # El paciente no existe
+                flash('RUT no existe en el sistema', 'danger')
+            else:
+                # Otro error
+                flash('Error al verificar RUT. Intente nuevamente.', 'danger')
+        except Exception as e:
+            flash('Error de conexión. Intente nuevamente más tarde.', 'danger')
+            current_app.logger.error(f"Error en login: {e}")
+        
     return render_template('login.html')
 
 @patient_bp.route('/logout')

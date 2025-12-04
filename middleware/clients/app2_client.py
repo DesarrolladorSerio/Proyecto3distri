@@ -211,6 +211,7 @@ class App2Client:
         """Transforma datos de App2 al formato esperado por App3"""
         payments = []
         pending_invoices = []
+        paid_invoices = []
         total_debt = 0.0
         
         # Procesar pagos
@@ -225,26 +226,33 @@ class App2Client:
                     'description': payment.get('descripcion', payment.get('description', ''))
                 })
         
-        # Procesar facturas pendientes
+        # Procesar facturas (separar en pagadas y pendientes)
         if isinstance(invoices_data, list):
             for invoice in invoices_data:
-                # Solo facturas pendientes
-                if invoice.get('estado', invoice.get('status', 'pending')) == 'pending':
-                    amount = invoice.get('monto', invoice.get('amount', 0))
-                    amount_float = float(amount) if amount is not None else 0.0
-                    pending_invoices.append({
-                        'id': invoice.get('id'),
-                        'date': invoice.get('fecha', invoice.get('created_at', '')),
-                        'amount': amount_float,
-                        'description': invoice.get('descripcion', invoice.get('description', '')),
-                        'due_date': invoice.get('fecha_vencimiento', invoice.get('due_date', ''))
-                    })
+                is_paid = invoice.get('pagada', False)
+                amount = invoice.get('monto', invoice.get('amount', 0))
+                amount_float = float(amount) if amount is not None else 0.0
+                
+                invoice_data = {
+                    'id': invoice.get('id'),
+                    'date': invoice.get('fecha_emision', invoice.get('created_at', '')),
+                    'amount': amount_float,
+                    'description': invoice.get('descripcion', invoice.get('description', ''))
+                }
+                
+                if is_paid:
+                    # Factura pagada
+                    paid_invoices.append(invoice_data)
+                else:
+                    # Factura pendiente
+                    pending_invoices.append(invoice_data)
                     total_debt += amount_float
         
         return {
             'patient_rut': patient_rut,
             'payments': payments,
             'pending_invoices': pending_invoices,
+            'paid_invoices': paid_invoices,  # Nuevo campo
             'total_debt': total_debt
         }
     
