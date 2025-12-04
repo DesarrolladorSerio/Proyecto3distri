@@ -11,7 +11,17 @@ class Config:
     DB_DATABASE = os.getenv('DB_DATABASE', 'app3')
     DB_PORT = int(os.getenv('DB_PORT', 3306))
     
+    # Configuración de replicación
+    DB_REPLICA_HOST = os.getenv('DB_REPLICA_HOST', 'mysql_replica')
+    DB_REPLICA_PORT = int(os.getenv('DB_REPLICA_PORT', 3306))
+
     SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}?charset=utf8mb4'
+    
+    # Configuración de binds para replicación (opcional)
+    SQLALCHEMY_BINDS = {
+        'replica': f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_REPLICA_HOST}:{DB_REPLICA_PORT}/{DB_DATABASE}?charset=utf8mb4'
+    }
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Flask
