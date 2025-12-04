@@ -318,7 +318,7 @@ services:
       - mysql_primary
       - middleware
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3003/health').read()\""]
       interval: 10s
       timeout: 5s
       retries: 5
