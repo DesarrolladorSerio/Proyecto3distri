@@ -1,0 +1,78 @@
+# ==========================================
+# Docker & Database Data Files
+# ==========================================
+# NUNCA subir los datos de las bases de datos
+# Estos archivos son específicos de cada máquina
+
+# MariaDB data directories (App1)
+app1/db/data-master/
+app1/db/data-replica/
+
+# PostgreSQL data (App2) - manejado por volúmenes Docker
+# MySQL data (App3) - manejado por volúmenes Docker
+
+# ==========================================
+# Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.log
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================
+# Node.js
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.npm
+
+# ==========================================
+# IDEs
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ==========================================
+# Docker
+# ==========================================
+*.pid
+*.seed
+*.pid.lock
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
