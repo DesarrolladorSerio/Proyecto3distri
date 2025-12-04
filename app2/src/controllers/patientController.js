@@ -2,6 +2,16 @@ const patientService = require('../services/patientService');
 
 const getAllPatients = async (req, res, next) => {
   try {
+    // Si hay query parameter rut, buscar por RUT específico
+    if (req.query.rut) {
+      const patient = await patientService.getPatientByRut(req.query.rut);
+      if (!patient) {
+        return res.status(404).json({ error: { message: 'Patient not found', status: 404 } });
+      }
+      return res.json(patient);
+    }
+    
+    // Si no, retornar todos los pacientes
     const patients = await patientService.getAllPatients();
     res.json(patients);
   } catch (error) {

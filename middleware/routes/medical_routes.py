@@ -19,6 +19,7 @@ class ConsultaCreate(BaseModel):
     diagnosis: str
     treatment: str
     notes: Optional[str] = None
+    fecha: Optional[str] = None
 
 class DisponibilidadUpdate(BaseModel):
     doctor_id: int

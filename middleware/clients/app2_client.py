@@ -188,26 +188,19 @@ class App2Client:
     async def get_patient_data(self, patient_rut: str) -> Optional[Dict]:
         """
         Obtiene datos personales del paciente
-        Endpoint App2: GET /patients (filtrado por RUT en query)
+        Endpoint App2: GET /patients?rut={rut}
         """
         if not self.circuit_breaker.can_execute():
             logger.warning("Circuit Breaker OPEN para App2")
             return None
         
         try:
-            # Primero obtener todos los pacientes (o filtrar si la API lo permite)
-            endpoint = "/patients"
+            # Usar query parameter para buscar directamente por RUT
+            endpoint = f"/patients?rut={patient_rut}"
             data = await retry_with_backoff(self._make_request, endpoint)
             
-            # Buscar el paciente por RUT
-            if isinstance(data, list):
-                for patient in data:
-                    if patient.get('rut') == patient_rut:
-                        self.circuit_breaker.record_success()
-                        return patient
-            
             self.circuit_breaker.record_success()
-            return None
+            return data
             
         except Exception as e:
             logger.error(f"Error obteniendo datos de paciente de App2: {e}")

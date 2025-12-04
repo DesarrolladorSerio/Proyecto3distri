@@ -24,9 +24,14 @@ const deletePatient = async (id) => {
   return await patient.destroy();
 };
 
+const getPatientByRut = async (rut) => {
+  return await Patient.findOne({ where: { rut } });
+};
+
 module.exports = {
   getAllPatients,
   getPatientById,
+  getPatientByRut,
   createPatient,
   updatePatient,
   deletePatient

@@ -128,7 +128,78 @@ class MiddlewareClient:
                 'available_slots': ['2024-12-09 15:00', '2024-12-10 15:00', '2024-12-11 16:00']
             }
         ]
-        
         if specialty:
             return [d for d in all_doctors if d['specialty'].lower() == specialty.lower()]
         return all_doctors
+    
+    def register_or_get_patient(self, patient_data: Dict) -> Optional[Dict]:
+        """
+        Registra un paciente en App2 o retorna sus datos si ya existe.
+        
+        Args:
+            patient_data: Dict con keys: rut, nombre, email, telefono, direccion
+            
+        Returns:
+            Dict con datos del paciente incluyendo 'id', o None si falla
+        """
+        try:
+            # Primero intentar obtener el paciente por RUT
+            url = f"{self.base_url}/api/patient/{patient_data['rut']}"
+            response = requests.get(url, timeout=self.timeout)
+            
+            if response.status_code == 200:
+                # Paciente existe, retornar sus datos
+                patient = response.json()
+                logger.info(f"Paciente ya registrado: {patient_data['rut']} (ID: {patient.get('id')})")
+                return patient
+            elif response.status_code == 404:
+                # Paciente no existe, registrarlo
+                logger.info(f"Paciente no encontrado, registrando: {patient_data['rut']}")
+                url_create = f"{self.base_url}/api/patients"
+                response_create = requests.post(url_create, json=patient_data, timeout=self.timeout)
+                response_create.raise_for_status()
+                new_patient = response_create.json()
+                logger.info(f"Paciente creado exitosamente: {patient_data['rut']} (ID: {new_patient.get('id')})")
+                return new_patient
+            else:
+                logger.error(f"Error inesperado al buscar paciente: {response.status_code}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al registrar/obtener paciente: {e}")
+            return None
+    
+    def create_consultation(self, consultation_data: Dict) -> Optional[Dict]:
+        """
+        Crea una consulta médica en App1 a través del middleware.
+        
+        Args:
+            consultation_data: Dict con keys que serán mapeados a formato de App1
+            
+        Returns:
+            Dict con respuesta de creación, o None si falla
+        """
+        try:
+            url = f"{self.base_url}/api/consultations"
+            
+            # Asegurar que el formato sea correcto para la API del Middleware
+            # El middleware luego lo convierte al formato de App1
+            data = {
+                "patient_id": str(consultation_data.get('id_paciente', consultation_data.get('patient_id', ''))),
+                "doctor_id": int(consultation_data.get('id_medico', consultation_data.get('doctor_id', 0))),
+                "specialty": consultation_data.get('specialty', ''),
+                "diagnosis": consultation_data.get('diagnostico', consultation_data.get('diagnosis', '')),
+                "treatment": consultation_data.get('tratamiento', consultation_data.get('treatment', '')),
+                "notes": consultation_data.get('motivo', consultation_data.get('notes', '')),
+                "fecha": consultation_data.get('fecha', consultation_data.get('appointment_date', ''))
+            }
+            
+            response = requests.post(url, json=data, timeout=self.timeout)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Consulta creada exitosamente para paciente {data['patient_id']}")
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error al crear consulta: {e}")
+            return None

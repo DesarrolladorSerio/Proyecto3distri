@@ -44,11 +44,22 @@ class App1Client:
         
         try:
             endpoint = "/consultas/"
+            
+            # Mapear campos del middleware al formato de App1
+            app1_data = {
+                "id_paciente": consulta_data.get('patient_id'),
+                "id_medico": consulta_data.get('doctor_id'),
+                "fecha": consulta_data.get('fecha', consulta_data.get('appointment_date')),
+                "motivo": consulta_data.get('notes', consulta_data.get('motivo', '')),
+                "diagnostico": consulta_data.get('diagnosis', consulta_data.get('diagnostico', '')),
+                "tratamiento": consulta_data.get('treatment', consulta_data.get('tratamiento', ''))
+            }
+            
             data = await retry_with_backoff(
                 self._make_request,
                 endpoint,
                 method="POST",
-                data=consulta_data
+                data=app1_data
             )
             
             self.circuit_breaker.record_success()

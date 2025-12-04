@@ -148,8 +148,19 @@ services:
       - "5434:5432"
     volumes:
       - postgres_replica_data:/var/lib/postgresql/data
-      - ./app2/scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
-    command: bash -c "chmod +x /docker-entrypoint-initdb.d/init_replica.sh && /docker-entrypoint-initdb.d/init_replica.sh"
+      - ./app2/scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh:ro
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - hot_standby=on
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby_feedback=on
     depends_on:
       postgres_primary:
         condition: service_healthy
@@ -164,7 +175,7 @@ services:
   app_primary:
     build: ./app2
     container_name: app2-app_primary
-    restart: always
+    restart: unless-stopped
     environment:
       DB_HOST: postgres_primary
       DB_USER: admin
@@ -173,20 +184,20 @@ services:
       DB_PORT: 5432
       PORT: 3002
     depends_on:
-      postgres_primary:
-        condition: service_healthy
+      - postgres_primary
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 40s
     networks:
       - medical_system
 
   app_replica:
     build: ./app2
     container_name: app2-app_replica
-    restart: always
+    restart: unless-stopped
     environment:
       DB_HOST: postgres_primary
       DB_USER: admin
@@ -195,20 +206,20 @@ services:
       DB_PORT: 5432
       PORT: 3002
     depends_on:
-      postgres_primary:
-        condition: service_healthy
+      - postgres_primary
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3002/"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 40s
     networks:
       - medical_system
 
   nginx:
     image: nginx:latest
     container_name: app2-nginx
-    restart: always
+    restart: unless-stopped
     ports:
       - "3002:80"
     volumes:
@@ -220,7 +231,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
     networks:
       - medical_system
 
@@ -303,15 +315,14 @@ services:
       PORT: 3003
       MIDDLEWARE_URL: http://middleware:8000
     depends_on:
-      mysql_primary:
-        condition: service_healthy
-      middleware:
-        condition: service_healthy
+      - mysql_primary
+      - middleware
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
     networks:
       - medical_system
 
@@ -332,15 +343,14 @@ services:
       REQUEST_TIMEOUT: 5
       MAX_RETRIES: 3
     depends_on:
-      app1:
-        condition: service_healthy
-      nginx:
-        condition: service_healthy
+      - app1
+      - nginx
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 20s
     networks:
       - medical_system
 

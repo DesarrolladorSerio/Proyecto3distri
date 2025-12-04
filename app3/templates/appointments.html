@@ -19,6 +19,21 @@
             </div>
 
             <div class="form-group">
+                <label for="patient_email">Correo Electronico:</label>
+                <input type="text" id="patient_email" name="patient_email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="patient_phone">Telefono:</label>
+                <input type="text" id="patient_phone" name="patient_phone" required>
+            </div>
+
+            <div class="form-group">
+                <label for="patient_address">Direccion:</label>
+                <input type="text" id="patient_address" name="patient_address" required>
+            </div>
+
+            <div class="form-group">
                 <label for="doctor_name">Médico:</label>
                 <select id="doctor_name" name="doctor_name" required>
                     <option value="">Seleccione un médico</option>
@@ -41,51 +56,12 @@
             </div>
 
             <div class="form-group">
-                <label for="notes">Notas (opcional):</label>
+                <label for="notes">Motivo de la consulta:(opcional)</label>
                 <textarea id="notes" name="notes" rows="3"></textarea>
             </div>
 
             <button type="submit" class="btn btn-primary">Agendar Cita</button>
         </form>
-    </section>
-
-    <!-- Lista de citas existentes -->
-    <section class="section">
-        <h3>Mis Citas</h3>
-        {% if appointments %}
-        <div class="appointments-list">
-            {% for appointment in appointments %}
-            <div class="card appointment-card {% if appointment.status == 'cancelled' %}cancelled{% endif %}">
-                <div class="appointment-header">
-                    <h4>{{ appointment.doctor_name }}</h4>
-                    <span class="status status-{{ appointment.status }}">{{ appointment.status }}</span>
-                </div>
-                <div class="appointment-body">
-                    <p><strong>Especialidad:</strong> {{ appointment.specialty }}</p>
-                    <p><strong>Fecha:</strong> {{ appointment.appointment_date.strftime('%d/%m/%Y %H:%M') }}</p>
-                    {% if appointment.notes %}
-                    <p><strong>Notas:</strong> {{ appointment.notes }}</p>
-                    {% endif %}
-                </div>
-                {% if appointment.status != 'cancelled' %}
-                <div class="appointment-actions">
-                    <form action="{{ url_for('appointment.cancel_appointment', appointment_id=appointment.id) }}"
-                        method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-danger btn-sm"
-                            onclick="return confirm('¿Está seguro de cancelar esta cita?')">
-                            Cancelar Cita
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="alert alert-info">
-            <p>No tiene citas agendadas.</p>
-        </div>
-        {% endif %}
     </section>
 
     <!-- Médicos disponibles -->
@@ -96,12 +72,6 @@
             <div class="card doctor-card">
                 <h4>{{ doctor.name }}</h4>
                 <p class="specialty">{{ doctor.specialty }}</p>
-                <p><strong>Horarios disponibles:</strong></p>
-                <ul class="slots">
-                    {% for slot in doctor.available_slots %}
-                    <li>{{ slot }}</li>
-                    {% endfor %}
-                </ul>
             </div>
             {% endfor %}
         </div>
