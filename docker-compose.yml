@@ -58,8 +58,7 @@ services:
     container_name: app1
     restart: unless-stopped
     depends_on:
-      mariadb-master:
-        condition: service_healthy
+      - mariadb-master
     environment:
       DB_HOST: mariadb-master
       DB_PORT: 3306
@@ -81,8 +80,7 @@ services:
     container_name: app1-replica
     restart: unless-stopped
     depends_on:
-      mariadb-master:
-        condition: service_healthy
+      - mariadb-master
     environment:
       DB_HOST: mariadb-master
       DB_PORT: 3306
@@ -125,7 +123,7 @@ services:
   postgres_primary:
     image: postgres:15
     container_name: app2-postgres_primary
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
@@ -151,14 +149,14 @@ services:
       test: ["CMD-SHELL", "pg_isready -U admin -d app2"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
       - medical_system
 
   postgres_replica:
     image: postgres:15
     container_name: app2-postgres_replica
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
@@ -181,13 +179,12 @@ services:
       - -c
       - hot_standby_feedback=on
     depends_on:
-      postgres_primary:
-        condition: service_healthy
+      - postgres_primary
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d app2"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
       - medical_system
 
@@ -329,8 +326,7 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     depends_on:
-      mysql_primary:
-        condition: service_healthy
+      - mysql_primary
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "admin", "-padmin"]
       interval: 10s
@@ -360,7 +356,7 @@ services:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3003/health').read()\""]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 30s
     networks:
       - medical_system
@@ -407,7 +403,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 20s
     networks:
       - medical_system

@@ -1,0 +1,112 @@
+# Configuración del Framework de Pruebas
+# Sistema de Gestión Médica Distribuido
+
+# URLs de los servicios
+services:
+  app1: http://localhost:5001
+  app1_replica: http://localhost:5002
+  # App2: NGINX load balancer - primary y replica detrás del mismo puerto
+  app2: http://localhost:3002 # NGINX balancea entre primary y replica
+  app3: http://localhost:3003
+  middleware: http://localhost:8000
+
+# Containers Docker
+containers:
+  app1: app1
+  app1_replica: app1-replica
+  app2_primary: app2-app_primary
+  app2_replica: app2-app_replica
+  app3: app3-app
+  middleware: middleware # Corregido: era middleware-app
+  mariadb_master: mariadb-master
+  mariadb_replica: mariadb-replica
+  postgres_primary: app2-postgres_primary
+  postgres_replica: app2-postgres_replica
+  mysql_primary: app3-mysql_primary
+  mysql_replica: app3-mysql_replica
+
+# SLA - Service Level Agreements (Acuerdos de Nivel de Servicio)
+sla:
+  # Disponibilidad mínima mensual: 96%
+  availability_minimum: 0.96
+
+  # Tiempo máximo de respuesta de App3: 3 segundos
+  app3_response_time_max: 3000 # milliseconds
+
+  # Recuperación ante caída de App principal: < 30 segundos
+  recovery_time_max: 30 # seconds
+
+  # Tiempo máximo para restablecer acceso a datos tras caída de BD: 20-40 segundos
+  db_recovery_time_min: 20 # seconds
+  db_recovery_time_max: 40 # seconds
+
+# SLO - Service Level Objectives (Objetivos de Nivel de Servicio)
+slo:
+  # Detección de caída de un servicio: ≤ 5–10 segundos
+  detection_time_min: 5 # seconds
+  detection_time_max: 10 # seconds
+
+  # Activación de réplica de base de datos: ≤ 10–20 segundos
+  db_failover_time_min: 10 # seconds
+  db_failover_time_max: 20 # seconds
+
+  # Failover de aplicación (cambio a réplica): ≤ 15–30 segundos
+  app_failover_time_min: 15 # seconds
+  app_failover_time_max: 30 # seconds
+
+  # Registro de fallos en logs: en menos de 5 segundos
+  log_time_max: 5 # seconds
+
+  # Reintentos de conexión desde el Middleware: cada 5–10 segundos
+  retry_interval_min: 5 # seconds
+  retry_interval_max: 10 # seconds
+
+  # Tiempo máximo de respuesta bajo condiciones normales: < 2 segundos
+  normal_response_time_max: 2000 # milliseconds
+
+# Configuración de pruebas
+testing:
+  # Duración de load test (en segundos)
+  load_test_duration: 300 # 5 minutos
+
+  # Usuarios concurrentes para load testing
+  concurrent_users: 50
+
+  # Intervalo de healthcheck (segundos)
+  healthcheck_interval: 5
+
+  # Timeout para requests HTTP (segundos)
+  request_timeout: 10
+
+  # Número de requests para benchmark
+  benchmark_requests: 1000
+
+  # Tiempo de espera entre pruebas (segundos)
+  cooldown_between_tests: 10
+
+# Configuración de reporting
+reporting:
+  # Directorio para reportes
+  output_dir: ./reports
+
+  # Formato de reportes
+  formats:
+    - json
+    - html
+
+  # Nivel de detalle (debug, info, warning, error)
+  log_level: info
+
+  # Incluir screenshots en reporte HTML
+  include_screenshots: true
+
+# Configuración de monitoreo
+monitoring:
+  # Puerto del dashboard
+  dashboard_port: 5555
+
+  # Intervalo de actualización (segundos)
+  refresh_interval: 5
+
+  # Retención de métricas (horas)
+  metrics_retention: 24
