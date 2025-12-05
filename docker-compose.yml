@@ -99,6 +99,25 @@ services:
     networks:
       - medical_system
 
+  mariadb-monitor:
+    build:
+      context: ./app1/db
+      dockerfile: Dockerfile.monitor
+    container_name: mariadb-monitor
+    restart: unless-stopped
+    depends_on:
+      - mariadb-master
+      - mariadb-replica
+    environment:
+      MASTER_HOST: mariadb-master
+      REPLICA_HOST: mariadb-replica
+      DB_USER: root
+      DB_PASSWORD: rootpass
+      CHECK_INTERVAL: 5
+      MAX_FAILURES: 3
+    networks:
+      - medical_system
+
   # ==========================================
   # APP 2 - Gestión Administrativa (Node.js + PostgreSQL)
   # ==========================================
@@ -216,6 +235,26 @@ services:
     networks:
       - medical_system
 
+  postgres-monitor:
+    build:
+      context: ./app2/scripts
+      dockerfile: Dockerfile.monitor
+    container_name: postgres-monitor
+    restart: unless-stopped
+    depends_on:
+      - postgres_primary
+      - postgres_replica
+    environment:
+      PRIMARY_HOST: postgres_primary
+      REPLICA_HOST: postgres_replica
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_NAME: app2
+      CHECK_INTERVAL: 5
+      MAX_FAILURES: 3
+    networks:
+      - medical_system
+
   nginx:
     image: nginx:latest
     container_name: app2-nginx
@@ -323,6 +362,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - medical_system
+
+  mysql-monitor:
+    build:
+      context: ./app3/scripts
+      dockerfile: Dockerfile.monitor
+    container_name: mysql-monitor
+    restart: unless-stopped
+    depends_on:
+      - mysql_primary
+      - mysql_replica
+    environment:
+      PRIMARY_HOST: mysql_primary
+      REPLICA_HOST: mysql_replica
+      DB_USER: root
+      DB_PASSWORD: rootpass
+      CHECK_INTERVAL: 5
+      MAX_FAILURES: 3
     networks:
       - medical_system
 

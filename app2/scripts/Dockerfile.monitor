@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir psycopg2-binary
+
+COPY postgres_failover.py .
+
+RUN chmod +x postgres_failover.py
+
+CMD ["python", "-u", "postgres_failover.py"]

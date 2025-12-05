@@ -124,6 +124,58 @@ docker-compose down -v
 
 ## Pruebas de Tolerancia a Fallos
 
+### ✨ Failover Automático de Bases de Datos
+
+El sistema incluye **monitores automáticos** que detectan caídas y promueven réplicas sin intervención manual:
+
+```bash
+# Verificar estado de los monitores
+docker logs mariadb-monitor --tail 10
+docker logs postgres-monitor --tail 10
+docker logs mysql-monitor --tail 10
+```
+
+### Probar Failover Automático MariaDB
+```bash
+# 1. Detener master
+docker stop mariadb-master
+
+# 2. Observar promoción automática (15-20 segundos)
+docker logs -f mariadb-monitor
+
+# 3. Verificar que App1 sigue funcionando
+curl http://localhost:5001/
+
+# 4. Reiniciar
+docker start mariadb-master
+```
+
+**Resultado**: La réplica se promoverá automáticamente a master tras detectar 3 fallos consecutivos.
+
+### Probar Failover Automático PostgreSQL
+```bash
+# 1. Detener primary
+docker stop postgres_primary
+
+# 2. Monitor ejecuta pg_promote() automáticamente
+docker logs -f postgres-monitor
+
+# 3. App2 sigue funcionando via réplica promovida
+curl http://localhost:3002/patients
+```
+
+### Probar Failover Automático MySQL
+```bash
+# 1. Detener primary
+docker stop mysql_primary
+
+# 2. Monitor promueve réplica automáticamente
+docker logs -f mysql-monitor
+
+# 3. App3 sigue disponible
+curl http://localhost:3003/health
+```
+
 ### Probar Failover de App1
 ```bash
 # Detener App1 Primary
