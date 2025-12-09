@@ -61,6 +61,7 @@ services:
       - mariadb-master
     environment:
       DB_HOST: mariadb-master
+      DB_REPLICA_HOST: mariadb-replica
       DB_PORT: 3306
       DB_USER: appuser
       DB_PASSWORD: apppass
@@ -83,6 +84,7 @@ services:
       - mariadb-master
     environment:
       DB_HOST: mariadb-master
+      DB_REPLICA_HOST: mariadb-replica
       DB_PORT: 3306
       DB_USER: appuser
       DB_PASSWORD: apppass
